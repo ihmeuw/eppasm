@@ -1,3 +1,4 @@
+temp <- 1
 #' @import data.table
 extend.years <- function(dt, years){
   dt <- as.data.table(dt)
