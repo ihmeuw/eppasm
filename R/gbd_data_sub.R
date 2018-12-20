@@ -198,7 +198,7 @@ sub.prev.granular <- function(dt, loc){
   age.prev.dt[, agegr := paste0(age_year, '-', age_year+4)]
   age.prev.dt[,sex := ifelse(sex_id == 1, 'male', 'female')]
   ## TODO: What do these mean
-  age.prev.dt[,c('used', 'deff', 'deff_approx') := c(TRUE, 2, 2)]
+  age.prev.dt[,c('used','deff', 'deff_approx') := list(TRUE,2, 2)]
   age.prev.dt <- age.prev.dt[,.(year, sex, agegr, n, prev, se, used, deff, deff_approx)]
   gen.pop.dict <- c("General Population", "General population", "GP", "GENERAL POPULATION", "GEN. POPL.", "General population(Low Risk)", "Remaining Pop")
   if(length(dt) == 1) {
@@ -360,6 +360,7 @@ sub.anc <- function(loc, dt) {
     gen.pop <- 1
   }
   eppd <- attr(dt[[gen.pop]], "eppd")
+ 
   if(grepl("ZAF", loc) | grepl("SWZ", loc)) {
     # Collapse up to single provincial ANC site
     # Extract first year of data and use that site as provincial site
@@ -413,7 +414,7 @@ sub.anc <- function(loc, dt) {
       }
     }
   }
-  
+
   # Reformat EPP object with updated data
   attr(dt[[gen.pop]], "eppd") <- eppd
   
@@ -423,3 +424,4 @@ sub.anc <- function(loc, dt) {
   
   return(dt)
 }
+
