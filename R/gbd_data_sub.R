@@ -347,3 +347,79 @@ sub.cd4.prog <- function(dt, loc, k){
   }	
   return(dt)
 }
+
+
+sub.anc <- function(loc, dt) {
+  # Make adjustments to ANC coming from PJNZ files ** add more **
+  ## Prep EPP data
+  # Choose subpopulation for substitution
+  gen.pop.dict <- c("General Population", "General population", "GP", "GENERAL POPULATION", "GEN. POPL.", "General population(Low Risk)", "Remaining Pop")
+  if(length(names(dt)) > 1) {
+    gen.pop <- names(dt)[names(dt) %in% gen.pop.dict]    	
+  } else {
+    gen.pop <- 1
+  }
+  eppd <- attr(dt[[gen.pop]], "eppd")
+  if(grepl("ZAF", loc) | grepl("SWZ", loc)) {
+    # Collapse up to single provincial ANC site
+    # Extract first year of data and use that site as provincial site
+    first.year <- min(as.integer(colnames(eppd$anc.prev)[sapply(colnames(eppd$anc.prev), function(col) {
+      !all(is.na(eppd$anc.prev[, col]))
+    })]))
+    prov.sites <- which(!is.na(eppd$anc.prev[, as.character(first.year)]))
+    for(i in 1:length(prov.sites)) {
+      prov.site <- prov.sites[i]
+      row.lower <- prov.sites[i] + 1
+      row.upper <- ifelse(i == length(prov.sites), nrow(eppd$anc.prev), prov.sites[i + 1] - 1)
+      eppd$anc.used[row.lower:row.upper] <- F
+      # Sum administrative units to provincial level
+      site.prev <- eppd$anc.prev[row.lower:row.upper,]
+      site.n <- eppd$anc.n[row.lower:row.upper,]
+      site.pos <- site.prev * site.n
+      sub.pos <- colSums(site.pos, na.rm = T)
+      sub.n <- colSums(site.n, na.rm = T)
+      sub.prev <- sub.pos / sub.n
+      # Append to provincial site
+      for(c in colnames(eppd$anc.prev)) {
+        if(is.na(eppd$anc.prev[prov.site, c])) {
+          eppd$anc.prev[prov.site, c] <- sub.prev[c]
+          eppd$anc.n[prov.site, c] <- sub.n[c]
+        }
+      }
+    }
+  } else {
+    # Add imputed data
+    # Read ANC data from back cast
+    anc.dir <- "/ihme/hiv/anc_backcast/"
+    recent <- max(as.integer(list.files(anc.dir)))
+    anc.path <- paste0(anc.dir, recent, "/data/", loc, ".csv")
+      if (length(list.files(anc.path))==0){
+        recent <- sort(as.integer(list.files(anc.dir)), decreasing=TRUE)[2]
+        anc.path <- paste0(anc.dir, recent, "/data/", loc, ".csv")
+      }
+      
+      
+    anc.dt <- fread(anc.path)
+    anc.dt[, clinic := gsub("[^[:alnum:] ]", "",clinic)] # For differences in naming like added special characters
+    anc.dt <- anc.dt[order(clinic)]
+    # Add draw level data from ANC backcast
+    for(cl in unique(anc.dt$clinic)) {
+      clinic.idx <- which(grepl(gsub(" ", "", cl),gsub(" ", "",  rownames(eppd$anc.prev))))
+      sub.dt <- anc.dt[clinic == cl]
+      sub.dt[pred == "Data", (paste0("draw_", i)) := mean]
+      for(y in unique(anc.dt[pred == "Data"]$year_id)) {
+        eppd$anc.prev[clinic.idx, as.character(y)] <- sub.dt[year_id == y, get(paste0("draw_", i))]
+        eppd$anc.n[clinic.idx, as.character(y)] <- sub.dt[year_id == y, n]
+      }
+    }
+  }
+  
+  # Reformat EPP object with updated data
+  attr(dt[[gen.pop]], "eppd") <- eppd
+  
+  set.list.attr <- function(obj, attrib, value.lst)
+    mapply(function(set, value){ attributes(set)[[attrib]] <- value; set}, obj, value.lst)
+  attr(dt[[gen.pop]], "likdat") <- epp::fnCreateLikDat(eppd, anchor.year = floor(attr(dt[[gen.pop]], "eppfp")$proj.steps[1]))
+  
+  return(dt)
+}
