@@ -92,6 +92,7 @@ simmod.specfp <- function(fp, VERSION="C"){
     ##  Single-year population projection  ##
     ## ################################### ##
     ## age adults
+    if(i == 49){browser()}
     pop[-c(1,pAG),,,i] <- pop[-(pAG-1:0),,,i-1]
     pop[pAG,,,i] <- pop[pAG,,,i-1] + pop[pAG-1,,,i-1] # open age group
     
