@@ -113,6 +113,11 @@ create_rvec <- function(theta, rt){
     rvec_rw <- cumsum(c(rvec_rlog[length(rvec_rlog)], diff_rvec))
 
     rvec <- c(rvec_rlog, rvec_rw)
+    old_rvec <- data.frame(rvec_sim1 = rvec, original = rep(1,length(rvec)))
+    rvec <- rvec * log(1.4)
+    new_rvec <- data.frame(rvec_sim1 = rvec, original = rep(0,length(rvec)))
+    rvec_combined <- rbind(old_rvec,new_rvec)
+    write.csv(rvec_combined, "/share/hiv/epp_output/gbd19/190814_testing/rvec_tests.csv", row.names = FALSE)
 
     return(exp(rvec))
   }
